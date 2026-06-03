@@ -1,0 +1,5 @@
+[
+  {"productId": "P001", "name": "Beras Premium 5kg", "price": 75000, "stock": 50},
+  {"productId": "P002", "name": "Minyak Goreng 2L", "price": 35000, "stock": 20},
+  {"productId": "P003", "name": "Gula Pasir 1kg", "price": 18000, "stock": 100}
+]
