@@ -1,0 +1,50 @@
+name: FreshGrocer CI Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Mengunduh source code dari repository
+    - name: Checkout Source Code
+      uses: actions/checkout@v3
+
+    # 2. Menyiapkan Lingkungan Java (JDK 17) sesuai spek Maven proyek Anda
+    - name: Set up JDK 17
+      uses: actions/actions-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    # 3. Menyiapkan Lingkungan PHP
+    - name: Set up PHP Environment
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: json, mbstring, curl
+
+    # 4. Menyalakan Backend Engine Java di Background (Port 8080)
+    # Catatan: Karena pengujian integrasi internal Anda sudah diperbaiki dan bebas flaky,
+    # langkah ini memastikan build & library terkompilasi dengan aman.
+    - name: Compile and Package Java Backend
+      run: mvn clean package -DskipTests
+
+    # 5. Mengeksekusi Seluruh Rangkaian Tes Otomatis (Unit & Integration Test)
+    # Langkah ini yang akan memicu keluaran log "BUILD SUCCESS" dengan 5 Tests run kemarin
+    - name: Run All Automated Testing and Generate JaCoCo Report
+      run: mvn test
+
+    # 6. Mengunggah Artefak Hasil Laporan Cakupan Kode (JaCoCo Report)
+    - name: Upload JaCoCo Coverage Artifact
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: jacoco-report
+        path: target/site/jacoco/
