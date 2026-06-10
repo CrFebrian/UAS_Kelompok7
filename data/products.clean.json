@@ -1,0 +1,17 @@
+[
+  {
+    "id": "P001",
+    "name": "Apel Fuji",
+    "price": 50000.0
+  },
+  {
+    "id": "P002",
+    "name": "Jeruk Medan",
+    "price": 30000.0
+  },
+  {
+    "id": "P003",
+    "name": "Pisang Cavendish",
+    "price": 25000.0
+  }
+]

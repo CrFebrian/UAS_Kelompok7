@@ -1,0 +1,14 @@
+[
+  {
+    "orderId": "ORD-001",
+    "customerName": "Budi",
+    "items": [
+      {
+        "productId": "P001",
+        "quantity": 2
+      }
+    ],
+    "totalPrice": 100000.0,
+    "status": "COMPLETED"
+  }
+]

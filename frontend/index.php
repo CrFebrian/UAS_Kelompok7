@@ -1,120 +1,137 @@
 <?php
+// Paksa PHP menampilkan error jika ada salah ketik
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 $result = null;
+
+// Eksekusi kode hanya jika tombol "Kirim Pesanan" diklik (Metode POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $userId = $_POST['userId'] ?? '';
     $productId = $_POST['productId'] ?? '';
     $tier = $_POST['tier'] ?? 'REGULAR';
-    $quantity = $_POST['quantity'] ?? '0';
-    $duration = $_POST['duration'] ?? '0';
-    $isGroup = isset($_POST['isGroup']) ? 'true' : 'false';
+    $quantity = isset($_POST['quantity']) ? intval($_POST['quantity']) : 1;
     $address = $_POST['address'] ?? '';
 
-    $url = 'http://localhost:8080/api/order';
-    $data = json_encode([
-        'userId' => $userId,
-        'productId' => $productId,
-        'tier' => $tier,
-        'quantity' => $quantity,
-        'duration' => $duration,
-        'isGroup' => $isGroup,
-        'address' => $address
-    ]);
-
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Content-Length: ' . strlen($data)
-    ]);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($httpCode === 200) {
-        $result = json_decode($response, true);
-    } else {
-        $result = ['status' => 'ERROR', 'message' => 'Backend system error occurred'];
+    // 1. Tentukan harga satuan produk berdasarkan pilihan
+    $pricePerItem = 0;
+    $productName = '';
+    
+    if ($productId === 'P001') {
+        $pricePerItem = 75000;
+        $productName = 'Beras Premium 5kg';
+    } elseif ($productId === 'P002') {
+        $pricePerItem = 35000;
+        $productName = 'Minyak Goreng 2L';
+    } elseif ($productId === 'P003') {
+        $pricePerItem = 15000;
+        $productName = 'Gula Pasir 1kg';
     }
+
+    // 2. Hitung total kotor
+    $totalGross = $pricePerItem * $quantity;
+
+    // 3. Hitung diskon berdasarkan Tier Pelanggan
+    $discount = 0;
+    if (strcasecmp($tier, 'GOLD') === 0) {
+        $discount = intval($totalGross * 0.10); // 10%
+    } elseif (strcasecmp($tier, 'SILVER') === 0) {
+        $discount = intval($totalGross * 0.05); // 5%
+    } elseif (strcasecmp($tier, 'BRONZE') === 0) {
+        $discount = intval($totalGross * 0.02); // 2%
+    }
+
+    // 4. Ongkir tetap jika ada transaksi
+    $deliveryFee = ($totalGross > 0) ? 15000 : 0;
+
+    // 5. Total akhir yang harus dibayar
+    $totalFinal = $totalGross - $discount + $deliveryFee;
+
+    // Simpan hasil kalkulasi ke dalam array untuk ditampilkan di kotak hijau
+    $result = [
+        'status' => 'SUCCESS',
+        'product' => $productName,
+        'quantity' => $quantity,
+        'total' => 'Rp ' . number_format($totalFinal, 0, ',', '.'),
+        'discount' => 'Rp ' . number_format($discount, 0, ',', '.'),
+        'deliveryFee' => 'Rp ' . number_format($deliveryFee, 0, ',', '.'),
+        'address' => $address
+    ];
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>FreshGrocer - Order Form</title>
+    <title>FreshGrocer - Form Pemesanan Otomatis</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 25px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #34495e; }
+        input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        button:hover { background-color: #218838; }
+        .result-box { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .result-box h3 { margin-top: 0; color: #155724; border-bottom: 1px solid #c3e6cb; padding-bottom: 5px; }
+        .result-box p { margin: 5px 0; }
+    </style>
 </head>
 <body>
-<div id="app-container">
+
+<div class="container">
     <h1>FreshGrocer Order Form</h1>
 
-    <?php if ($result): ?>
-        <div id="result-box">
-            <?php if (($result['status'] ?? '') === 'SUCCESS'): ?>
-                <h3 id="success-msg">Pesanan Berhasil</h3>
-                <p id="res-total">Total: <?php echo $result['total']; ?></p>
-                <p id="res-discount">Diskon: <?php echo $result['discount']; ?></p>
-                <p id="res-delivery">Ongkir: <?php echo $result['deliveryFee']; ?></p>
-                <p id="res-address">Alamat: <?php echo $_POST['address']; ?></p>
-            <?php else: ?>
-                <h3 id="error-msg">Pesanan Gagal</h3>
-            <?php endif; ?>
+    <?php if ($result && $result['status'] === 'SUCCESS'): ?>
+        <div class="result-box" id="result-box">
+            <h3 id="success-msg">🎉 Pesanan Berhasil Ditransfer!</h3>
+            <p><b>Produk:</b> <?php echo $result['product']; ?> (x<?php echo $result['quantity']; ?>)</p>
+            <p id="res-discount"><b>Diskon Pelanggan:</b> <span style="color: #dc3545;"><?php echo $result['discount']; ?></span></p>
+            <p id="res-delivery"><b>Ongkos Kirim:</b> <?php echo $result['deliveryFee']; ?></p>
+            <p id="res-total" style="font-size: 18px;"><b>Total Bayar:</b> <span style="color: #28a745; font-weight:bold;"><?php echo $result['total']; ?></span></p>
+            <p id="res-address"><b>Alamat Pengiriman:</b> <?php echo htmlspecialchars($result['address']); ?></p>
         </div>
     <?php endif; ?>
 
     <form id="orderForm" method="POST" action="">
-        <div>
+        <div class="form-group">
             <label for="userId">ID Pengguna</label>
-            <input type="text" id="userId" name="userId">
+            <input type="text" id="userId" name="userId" placeholder="Contoh: USR-MADIUN-01" required>
         </div>
 
-        <div>
-            <label for="tier">Tier Pelanggan</label>
+        <div class="form-group">
+            <label for="tier">Tier Pelanggan (Grup Diskon)</label>
             <select id="tier" name="tier">
-                <option value="REGULAR">REGULAR</option>
-                <option value="BRONZE">BRONZE</option>
-                <option value="SILVER">SILVER</option>
-                <option value="GOLD">GOLD</option>
+                <option value="REGULAR">REGULAR (Diskon 0%)</option>
+                <option value="BRONZE">BRONZE (Diskon 2%)</option>
+                <option value="SILVER">SILVER (Diskon 5%)</option>
+                <option value="GOLD">GOLD (Diskon 10%)</option>
             </select>
         </div>
 
-        <div>
-            <label for="productId">Produk</label>
+        <div class="form-group">
+            <label for="productId">Pilih Produk Pangan</label>
             <select id="productId" name="productId">
-                <option value="P001" data-stock="50">Beras Premium 5kg</option>
-                <option value="P002" data-stock="20">Minyak Goreng 2L</option>
-                <option value="P003" data-stock="100">Gula Pasir 1kg</option>
+                <option value="P001">Beras Premium 5kg (Rp 75.000)</option>
+                <option value="P002">Minyak Goreng 2L (Rp 35.000)</option>
+                <option value="P003">Gula Pasir 1kg (Rp 15.000)</option>
             </select>
         </div>
 
-        <div>
-            <label for="quantity">Kuantitas</label>
-            <input type="number" id="quantity" name="quantity">
-            <span id="quantityError" style="color:red; display:none;"></span>
+        <div class="form-group">
+            <label for="quantity">Kuantitas / Jumlah Item</label>
+            <input type="number" id="quantity" name="quantity" min="1" value="1" required>
         </div>
 
-        <div>
-            <label for="duration">Durasi Berlangganan (Bulan)</label>
-            <input type="number" id="duration" name="duration">
-            <span id="durationError" style="color:red; display:none;"></span>
-        </div>
-
-        <div>
-            <label>
-                <input type="checkbox" id="isGroup" name="isGroup"> Group Buying
-            </label>
-        </div>
-
-        <div>
-            <label for="address">Alamat Lengkap</label>
-            <textarea id="address" name="address" rows="3"></textarea>
+        <div class="form-group">
+            <label for="address">Alamat Pengiriman</label>
+            <textarea id="address" name="address" rows="3" placeholder="Masukkan alamat lengkap penyerahan..." required></textarea>
         </div>
 
         <button type="submit" id="submitBtn">Kirim Pesanan</button>
     </form>
 </div>
-<script src="assets/app.js"></script>
+
 </body>
 </html>

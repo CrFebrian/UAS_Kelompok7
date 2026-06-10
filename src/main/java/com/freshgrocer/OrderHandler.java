@@ -1,4 +1,4 @@
-package backend.src;
+package com.freshgrocer;
 
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
@@ -6,9 +6,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
-public class OrderHandler implements HttpHandler{
+public class OrderHandler implements HttpHandler {
     @Override
-    public void handle(HttpExchange exchange) throws IOException{
+    public void handle(HttpExchange exchange) throws IOException {
         if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
             byte[] bytes = exchange.getRequestBody().readAllBytes();
             String json = new String(bytes, StandardCharsets.UTF_8);
@@ -22,6 +22,7 @@ public class OrderHandler implements HttpHandler{
             double discount = 0.0;
             double deliveryFee = 15000.0;
 
+            // Logika Tier
             if (tier.equals("GOLD")) {
                 if (quantity > 10) {
                     discount = 0.20;
@@ -63,13 +64,13 @@ public class OrderHandler implements HttpHandler{
 
             double baseTotal = price * quantity;
             double discountAmount = baseTotal * discount;
-            double finalTotal = baseTotal - discountAmount + deliveryFee;
+            
+            // Proteksi agar tidak pembagian dengan nol
+            double finalTotal = (quantity > 0) ? (baseTotal - discountAmount + deliveryFee) : 0.0;
 
-            if (quantity <= 0) {
-                finalTotal = baseTotal / quantity;
-            }
-
-            String responseJson = "{\"status\":\"SUCCESS\",\"total\":" + finalTotal + ",\"discount\":" + discountAmount + ",\"deliveryFee\":" + deliveryFee + "}";
+            String responseJson = "{\"status\":\"SUCCESS\",\"total\":" + finalTotal + 
+                                  ",\"discount\":" + discountAmount + 
+                                  ",\"deliveryFee\":" + deliveryFee + "}";
 
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, responseJson.getBytes(StandardCharsets.UTF_8).length);
@@ -81,7 +82,7 @@ public class OrderHandler implements HttpHandler{
         }
     }
 
-    private String extractValue(String json, String key){
+    private String extractValue(String json, String key) {
         String pattern = "\"" + key + "\":\"";
         int start = json.indexOf(pattern);
         if (start != -1) {
@@ -101,5 +102,10 @@ public class OrderHandler implements HttpHandler{
             }
         }
         return "";
+    }
+
+    public String handleCheckout(String jsonPayload) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'handleCheckout'");
     }
 }
